@@ -44,6 +44,8 @@
 #define BIN2_BR    15
 #define PWM_BR     22
 
+#define BUZZER_PIN 32   // Korna (Buzzer) Pini
+
 // PWM Ayarları
 #define MOTOR_FREQ  1000
 #define MOTOR_RES   8     // 8-bit → 0-255
@@ -62,9 +64,10 @@ typedef struct __attribute__((packed)) {
   int8_t  y;      // -100..100 ileri/geri
   int8_t  rot;    // -100..100 dönüş
   uint8_t speed;  // 0..255 max hız
+  uint8_t horn;   // 0=Kapalı, 1=Açık
 } ControlData;
 
-ControlData ctrlData = {0, 0, 0, 200};
+ControlData ctrlData = {0, 0, 0, 200, 0};
 unsigned long lastRecvTime = 0;
 bool dataReceived = false;
 
@@ -157,6 +160,10 @@ void setup() {
   pinMode(STBY, OUTPUT);
   digitalWrite(STBY, HIGH);
 
+  // ── Buzzer pin ──
+  pinMode(BUZZER_PIN, OUTPUT);
+  digitalWrite(BUZZER_PIN, LOW);
+
   // ── Motor yön pinleri ──
   pinMode(AIN1_FL, OUTPUT); pinMode(AIN2_FL, OUTPUT);
   pinMode(BIN1_BL, OUTPUT); pinMode(BIN2_BL, OUTPUT);
@@ -207,11 +214,13 @@ void loop() {
   if (dataReceived) {
     dataReceived = false;
     mecanumDrive(ctrlData.x, ctrlData.y, ctrlData.rot, ctrlData.speed);
+    digitalWrite(BUZZER_PIN, ctrlData.horn ? HIGH : LOW);
   }
 
   // Güvenlik: Belirli süre veri gelmezse motorları durdur
   if (millis() - lastRecvTime > TIMEOUT_MS) {
     stopAllMotors();
+    digitalWrite(BUZZER_PIN, LOW); // Kornayı sustur
     // Her 2 saniyede bir uyarı yazdır
     static unsigned long lastWarn = 0;
     if (millis() - lastWarn > 2000) {
