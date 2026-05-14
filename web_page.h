@@ -1,4 +1,4 @@
-﻿#ifndef WEB_PAGE_H
+#ifndef WEB_PAGE_H
 #define WEB_PAGE_H
 const char index_html[] PROGMEM = R"rawliteral(
 <!DOCTYPE html><html lang="tr"><head>
@@ -7,16 +7,14 @@ const char index_html[] PROGMEM = R"rawliteral(
 <title>KesisRobot</title>
 <style>
 *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
-:root{--bg:#0a0a12;--card:rgba(15,10,25,0.92);--border:rgba(255,45,123,0.2);
---neon:#ff2d7b;--cyan:#00f0ff;--yellow:#f7ff00;--orange:#ff6b2b;
---glow:rgba(255,45,123,0.4);--danger:#ff1744;--success:#00e676;
---txt:#e8e0f0;--dim:#6a5a7a;--r:10px}
-html,body{height:100%;overflow-x:hidden;touch-action:manipulation}
-body{font-family:Consolas,'Courier New',monospace;background:var(--bg);color:var(--txt)}
+:root{--bg:#050505;--card:rgba(12,12,12,0.85);--border:rgba(0,255,65,0.2);
+--neon:#00ff41;--cyan:#00ff41;--yellow:#f7ff00;--orange:#00ff41;
+--glow:rgba(0,255,65,0.3);--danger:#ff1744;--success:#00e676;
+--txt:#e0e0e0;--dim:#555555;--r:4px}
+html,body{min-height:100vh;overflow-x:hidden;touch-action:manipulation}
+body{font-family:Consolas,'Courier New',monospace;background:var(--bg);color:var(--txt);text-shadow:0 0 3px rgba(0,255,65,0.2)}
 body::before{content:'';position:fixed;inset:0;background:
-repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(255,45,123,0.03) 2px,rgba(255,45,123,0.03) 4px),
-radial-gradient(ellipse at 30% 0%,rgba(255,45,123,0.08),transparent 60%),
-radial-gradient(ellipse at 70% 100%,rgba(0,240,255,0.06),transparent 60%);pointer-events:none;z-index:0}
+repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(255,255,255,0.02) 2px,rgba(255,255,255,0.02) 4px);pointer-events:none;z-index:9999}
 .app{display:flex;flex-direction:column;min-height:100vh;max-width:960px;margin:0 auto;padding:6px 10px;position:relative;z-index:1}
 .hdr{text-align:center;padding:8px 0 4px}
 .hdr h1{font-size:1.3rem;font-weight:900;letter-spacing:6px;color:var(--neon);text-transform:uppercase;
@@ -24,10 +22,13 @@ text-shadow:0 0 10px var(--glow),0 0 30px rgba(255,45,123,0.2)}
 .hdr .sub{font-size:.55rem;color:var(--cyan);letter-spacing:5px;text-transform:uppercase}
 .badges{display:flex;justify-content:center;gap:8px;margin-top:6px}
 .badge{display:inline-flex;align-items:center;gap:4px;padding:3px 12px;border-radius:20px;font-size:.55rem;font-weight:700;letter-spacing:2px}
-.badge.ok{background:rgba(0,230,118,0.1);border:1px solid rgba(0,230,118,0.3);color:var(--success)}
-.badge.esp{background:rgba(0,240,255,0.08);border:1px solid rgba(0,240,255,0.25);color:var(--cyan)}
-.dot{width:6px;height:6px;border-radius:50%;background:currentColor;animation:pulse 2s infinite}
-@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+.badge.ok{background:rgba(0,230,118,0.05);border:1px solid rgba(0,230,118,0.2);color:var(--dim)}
+.badge.esp{background:rgba(0,240,255,0.05);border:1px solid rgba(0,240,255,0.2);color:var(--dim)}
+.badge.connected.ok{background:rgba(0,230,118,0.15);border-color:rgba(0,230,118,0.4);color:var(--success)}
+.badge.connected.esp{background:rgba(0,240,255,0.15);border-color:rgba(0,240,255,0.4);color:#00e5ff}
+.dot{width:6px;height:6px;border-radius:50%;background:currentColor;opacity:0.3;transition:0.3s}
+.badge.connected .dot{opacity:1;animation:pulse 2s infinite;box-shadow:0 0 6px currentColor}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
 .toolbar{display:flex;gap:4px;margin:6px 0;flex-wrap:wrap;align-items:center}
 .tb-btn{padding:7px 10px;border-radius:8px;font-size:.55rem;font-weight:700;letter-spacing:1px;
 cursor:pointer;border:1px solid var(--border);background:var(--card);color:var(--dim);transition:.2s;
@@ -43,13 +44,13 @@ font-family:inherit;text-transform:uppercase;user-select:none}
 .mode-switch{display:flex;gap:0;margin:6px 0;border-radius:var(--r);overflow:hidden;border:1px solid var(--border)}
 .mode-btn{flex:1;padding:12px 0;text-align:center;font-size:.7rem;font-weight:700;letter-spacing:3px;
 text-transform:uppercase;cursor:pointer;transition:.3s;background:var(--card);color:var(--dim);border:none;font-family:inherit}
-.mode-btn.active-manual{background:linear-gradient(135deg,rgba(255,45,123,0.2),rgba(255,45,123,0.05));
+.mode-btn.active-manual{background:linear-gradient(135deg,rgba(0,255,65,0.2),rgba(0,255,65,0.05));
 color:var(--neon);box-shadow:inset 0 -3px 0 var(--neon)}
-.mode-btn.active-auto{background:linear-gradient(135deg,rgba(247,255,0,0.15),rgba(247,255,0,0.03));
+.mode-btn.active-auto{background:linear-gradient(135deg,rgba(170,255,170,0.15),rgba(170,255,170,0.03));
 color:var(--yellow);box-shadow:inset 0 -3px 0 var(--yellow)}
 .panel{background:var(--card);border:1px solid var(--border);border-radius:var(--r);margin:5px 0;
 transition:box-shadow .2s;overflow:visible}
-.panel.floating{position:fixed;z-index:100;box-shadow:0 0 30px rgba(0,0,0,0.6),0 0 10px var(--glow);min-width:200px}
+.panel.floating{position:absolute;z-index:100;box-shadow:0 0 30px rgba(0,0,0,0.8),0 0 15px rgba(0,255,65,0.1);min-width:200px}
 .panel.hidden{display:none}
 .p-hdr{display:flex;align-items:center;padding:8px 12px;cursor:grab;user-select:none;
 background:rgba(255,45,123,0.05);border-bottom:1px solid var(--border);border-radius:var(--r) var(--r) 0 0}
@@ -114,9 +115,9 @@ touch-action:manipulation;transition:.15s;font-family:inherit;letter-spacing:1px
 border:1px solid var(--border);border-radius:8px;margin-top:8px}
 .speed-row label{font-size:.6rem;color:var(--dim);letter-spacing:3px;text-transform:uppercase;flex-shrink:0}
 .speed-row input[type=range]{flex:1;-webkit-appearance:none;height:6px;border-radius:3px;background:rgba(255,45,123,0.15);outline:none}
-.speed-row input::-webkit-slider-thumb{-webkit-appearance:none;width:28px;height:28px;border-radius:50%;
-background:linear-gradient(135deg,var(--neon),var(--orange));box-shadow:0 0 12px var(--glow);
-border:2px solid rgba(255,255,255,0.2);cursor:pointer}
+.speed-row input::-webkit-slider-thumb{-webkit-appearance:none;width:28px;height:28px;border-radius:2px;
+background:var(--neon);box-shadow:0 0 12px var(--glow);
+border:2px solid var(--txt);cursor:pointer}
 .speed-row .val{font-size:.8rem;font-weight:700;color:var(--neon);min-width:30px;text-align:right}
 .dir-display{text-align:center;padding:3px 0}
 .dir-text{font-size:.7rem;font-weight:700;color:var(--cyan);letter-spacing:4px;text-transform:uppercase;
@@ -130,9 +131,9 @@ box-shadow:0 0 20px rgba(255,23,68,0.4);transform:scale(.98)}
 .pt-row{display:flex;align-items:center;gap:6px;margin-bottom:8px}
 .pt-row label{font-size:.55rem;color:var(--dim);letter-spacing:2px;text-transform:uppercase;min-width:30px;flex-shrink:0}
 .pt-row input[type=range]{flex:1;-webkit-appearance:none;height:8px;border-radius:4px;background:rgba(0,240,255,0.1);outline:none}
-.pt-row input::-webkit-slider-thumb{-webkit-appearance:none;width:30px;height:30px;border-radius:50%;
-background:linear-gradient(135deg,var(--cyan),#0080a0);box-shadow:0 0 12px rgba(0,240,255,0.4);
-border:2px solid rgba(255,255,255,0.2);cursor:pointer}
+.pt-row input::-webkit-slider-thumb{-webkit-appearance:none;width:30px;height:30px;border-radius:2px;
+background:var(--cyan);box-shadow:0 0 12px var(--glow);
+border:2px solid var(--txt);cursor:pointer}
 .pt-val{font-size:.75rem;font-weight:700;color:var(--cyan);min-width:34px;text-align:right}
 .pt-adj{width:34px;height:34px;border-radius:8px;background:rgba(0,240,255,0.08);border:1px solid rgba(0,240,255,0.2);
 color:var(--cyan);font-size:1rem;font-weight:700;display:flex;align-items:center;justify-content:center;
@@ -174,15 +175,29 @@ text-shadow:0 0 8px rgba(247,255,0,0.3)}
 border:1px solid rgba(247,255,0,0.1)}
 .auto-stat .label{font-size:.45rem;color:var(--dim);letter-spacing:1px;text-transform:uppercase}
 .auto-stat .value{font-size:.85rem;font-weight:700;color:var(--yellow);margin-top:2px}
+.gas-modal{position:fixed;inset:0;z-index:99999;display:flex;align-items:flex-start;justify-content:center;padding-top:60px;opacity:0;pointer-events:none;transition:0.3s}
+.gas-modal.active{opacity:1;animation:dangerVignette 0.8s infinite alternate}
+@keyframes dangerVignette{0%{box-shadow:inset 0 0 30px rgba(255,23,68,0.2)}100%{box-shadow:inset 0 0 120px rgba(255,23,68,0.7)}}
+.gas-modal-inner{pointer-events:auto;background:rgba(5,0,0,0.95);border:2px solid var(--danger);border-radius:var(--r);padding:20px;text-align:center;
+box-shadow:0 0 40px rgba(255,23,68,0.4), inset 0 0 20px rgba(255,23,68,0.2);max-width:320px;
+animation:modalSiren 1s infinite}
+@keyframes modalSiren{0%,100%{box-shadow:0 0 40px rgba(255,23,68,0.4), inset 0 0 20px rgba(255,23,68,0.2);border-color:var(--danger)}
+50%{box-shadow:0 0 10px rgba(255,23,68,0.1), inset 0 0 5px rgba(255,23,68,0.1);border-color:#800010}}
+.gas-modal-title{color:var(--danger);font-size:1.2rem;font-weight:900;letter-spacing:4px;text-transform:uppercase;margin-bottom:10px;text-shadow:0 0 10px var(--danger)}
+.gas-modal-text{color:#fff;font-size:0.7rem;margin-bottom:20px;opacity:0.8;line-height:1.4}
+.siren-btn{background:rgba(255,23,68,0.15);border:1px solid var(--danger);color:var(--danger);padding:10px 20px;
+font-family:inherit;font-size:0.8rem;font-weight:700;letter-spacing:2px;cursor:pointer;border-radius:var(--r);transition:0.2s}
+.siren-btn:hover,.siren-btn:active{background:var(--danger);color:#fff;box-shadow:0 0 15px var(--danger)}
 .ftr{text-align:center;font-size:.45rem;color:var(--dim);letter-spacing:2px;padding:6px 0}
 </style></head><body>
+<canvas id="matrixCanvas" style="position:fixed;top:0;left:0;width:100%;height:100%;z-index:0;pointer-events:none;opacity:0.6"></canvas>
 <div class="app">
 <div class="hdr">
-<h1>&#9881; Kesis-Robot</h1>
-<div class="sub">Mecanum Kontrol Merkezi</div>
+<h1>&#9881; NEXUS TACTICAL</h1>
+<div class="sub">Merkezi Kontrol Terminali</div>
 <div class="badges">
-<span class="badge ok"><span class="dot"></span>WiFi</span>
-<span class="badge esp"><span class="dot"></span>ESP-NOW</span>
+<span class="badge ok" id="wifiBadge"><span class="dot"></span>WiFi</span>
+<span class="badge esp" id="espBadge"><span class="dot"></span>ESP-NOW</span>
 </div></div>
 
 <div class="toolbar" id="toolbar">
@@ -291,7 +306,7 @@ ontouchend="stopRot(this)" onmouseup="stopRot(this)" onmouseleave="stopRot(this)
 <div class="p-btn" onclick="hidePanel('pDash')">&#10005;</div></div>
 <div class="p-body" id="pDashBody">
 <div class="dash-grid">
-<div class="dash-item" id="gasItem"><div class="dash-icon">&#9729;</div>
+<div class="dash-item" id="gasItem"><div class="dash-icon" onclick="playSiren()" style="cursor:pointer" title="Sireni Test Et">&#9729;</div>
 <div class="gauge-wrap"><canvas id="gasGauge" width="66" height="38"></canvas></div>
 <div class="dash-val" id="gasVal">--</div><div class="dash-label">Gaz</div></div>
 <div class="dash-item"><div class="dash-icon">&#128168;</div><div class="dash-val" id="dashSpeed">200</div><div class="dash-label">Hiz</div></div>
@@ -308,6 +323,11 @@ ontouchend="stopRot(this)" onmouseup="stopRot(this)" onmouseleave="stopRot(this)
 <div class="p-btn" onclick="toggleCollapse('pServo')">&#9660;</div>
 <div class="p-btn" onclick="hidePanel('pServo')">&#10005;</div></div>
 <div class="p-body" id="pServoBody">
+<div class="ctrl-mode">
+<div class="cm-btn active" id="cmServoSlider" onclick="setServoMode('slider')">&#9644; Slider</div>
+<div class="cm-btn" id="cmServoBtn" onclick="setServoMode('btn')">&#9632; Butonlar</div>
+</div>
+<div id="servoSliderView">
 <div class="pt-row"><label>Pan</label>
 <div class="pt-adj" onclick="ptAdj('pan',-5)">-</div>
 <input type="range" id="panSlider" min="0" max="180" value="90" oninput="ptSlide()">
@@ -322,10 +342,30 @@ ontouchend="stopRot(this)" onmouseup="stopRot(this)" onmouseleave="stopRot(this)
 <div class="pt-pre" onclick="ptSet(0,90)">Sol</div>
 <div class="pt-pre ctr" onclick="ptSet(90,90)">&#8634; Orta</div>
 <div class="pt-pre" onclick="ptSet(180,90)">Sag</div>
-</div></div></div>
+</div></div>
+<div id="servoBtnView" style="display:none; padding-top:4px;">
+<div class="dpad" style="max-width:140px; gap:6px;">
+<div style="visibility:hidden"></div>
+<div class="dpad-btn" onclick="ptAdj('tilt',-10)">&#9650;</div>
+<div style="visibility:hidden"></div>
+<div class="dpad-btn" onclick="ptAdj('pan',-10)">&#9664;</div>
+<div class="dpad-btn stop" onclick="ptSet(90,90)">&#9678;</div>
+<div class="dpad-btn" onclick="ptAdj('pan',10)">&#9654;</div>
+<div style="visibility:hidden"></div>
+<div class="dpad-btn" onclick="ptAdj('tilt',10)">&#9660;</div>
+<div style="visibility:hidden"></div>
+</div>
+</div>
+</div></div>
 
 </div>
-<div class="ftr">KESIS-ROBOT &copy; 2026 &mdash; CYBERPUNK MECANUM</div>
+<div class="gas-modal" id="gasModal">
+<div class="gas-modal-inner">
+<div class="gas-modal-title">&#9888; CRITICAL ALARM</div>
+<div class="gas-modal-text">YUKSEK GAZ SEVIYESI TESPIT EDILDI!<br>TAHLIYE VEYA KONTROL GEREKLI.</div>
+<button class="siren-btn" onclick="acknowledgeGas()">SUSTUR</button>
+</div></div>
+<div class="ftr">NEXUS TACTICAL &copy; 2026 &mdash; SECURE TERMINAL</div>
 </div>
 <script>
 const SEND_INTERVAL=80,DEADZONE=8,AXIS_LOCK_T=0.45;
@@ -453,13 +493,18 @@ document.querySelectorAll('.panel').forEach(p=>{
     // Check if clicking near bottom-right for resize
     if(t.clientX > rect.right-30 && t.clientY > rect.bottom-30){
       resizing=true;
-      sx=t.clientX;sy=t.clientY;
+      sx=t.pageX;sy=t.pageY;
       const tform = p.style.transform;
       oScale = tform.includes('scale') ? parseFloat(tform.split('scale(')[1]) : 1;
       oW = rect.width / oScale;
     } else {
       dragging=true;
-      sx=t.clientX;sy=t.clientY;ox=rect.left;oy=rect.top;
+      sx=t.pageX;sy=t.pageY;
+      if(p.classList.contains('floating')){
+        ox=parseFloat(p.style.left)||0; oy=parseFloat(p.style.top)||0;
+      }else{
+        ox=0; oy=0;
+      }
     }
     
     const mf=ev=>{
@@ -468,23 +513,25 @@ document.querySelectorAll('.panel').forEach(p=>{
       if(dragging){
         if(!p.classList.contains('floating')){
           const currRect = p.getBoundingClientRect();
+          const appRect = document.querySelector('.app').getBoundingClientRect();
           p.classList.add('floating');
           p.style.width=(currRect.width)+'px';
           // maintain visual scale when switching to floating
           const currScale = p.style.transform.includes('scale') ? parseFloat(p.style.transform.split('scale(')[1]) : 1;
-          ox = currRect.left; oy = currRect.top;
-          sx = tt.clientX; sy = tt.clientY;
+          ox = currRect.left - appRect.left; oy = currRect.top - appRect.top;
+          sx = tt.pageX; sy = tt.pageY;
         }
-        p.style.left=(ox+(tt.clientX-sx))+'px';p.style.top=(oy+(tt.clientY-sy))+'px';
+        p.style.left=(ox+(tt.pageX-sx))+'px';p.style.top=(oy+(tt.pageY-sy))+'px';
         p.style.zIndex=++topZ;
       }else if(resizing){
         if(!p.classList.contains('floating')){
            const currRect = p.getBoundingClientRect();
+           const appRect = document.querySelector('.app').getBoundingClientRect();
            p.classList.add('floating');
-           p.style.left=currRect.left+'px'; p.style.top=currRect.top+'px';
+           p.style.left=(currRect.left - appRect.left)+'px'; p.style.top=(currRect.top - appRect.top)+'px';
            p.style.width=(currRect.width/oScale)+'px';
         }
-        const dx = tt.clientX - sx;
+        const dx = tt.pageX - sx;
         let newScale = oScale + (dx / oW);
         newScale = Math.max(0.5, Math.min(2.5, newScale));
         p.style.transform = `scale(${newScale})`;
@@ -601,6 +648,14 @@ function setCtrlMode(m){
   if(m==='joy'){joyX=0;joyY=0;rot=0;updateDir();sendControl();}
 }
 
+// === SERVO MODE ===
+function setServoMode(m){
+  document.getElementById('servoSliderView').style.display=m==='slider'?'block':'none';
+  document.getElementById('servoBtnView').style.display=m==='btn'?'block':'none';
+  document.getElementById('cmServoSlider').classList.toggle('active',m==='slider');
+  document.getElementById('cmServoBtn').classList.toggle('active',m==='btn');
+}
+
 // === DPAD ===
 function dpadOn(x,y,el){joyX=x;joyY=y;el.classList.add('active');updateDir();updateDash();sendControl();}
 function dpadOff(el){joyX=0;joyY=0;el.classList.remove('active');updateDir();updateDash();sendControl();}
@@ -709,17 +764,128 @@ function drawGasGauge(val){
   g.beginPath();g.arc(cx,cy,r,Math.PI,angle);g.strokeStyle=color;g.lineWidth=5;g.lineCap='round';g.stroke();
 }
 let sensorPolling=null;
+let connTimeout=null;
+
+// === GAS ALARM & AUDIO ===
+let audioCtx=null, sirenOsc=null, sirenGain=null, sirenInterval=null;
+let alarmActive=false, snoozeTimer=0, GAS_THRESHOLD=2000;
+
+function initAudio(){
+  if(!audioCtx){
+    audioCtx=new (window.AudioContext||window.webkitAudioContext)();
+    sirenGain=audioCtx.createGain();
+    sirenGain.connect(audioCtx.destination);
+    sirenGain.gain.value=0.5; // Ses seviyesi yukseltildi
+  }
+}
+const unlockAudio = () => {
+  if(!audioCtx) initAudio();
+  if(audioCtx && audioCtx.state==='suspended') {
+    let p = audioCtx.resume();
+    if(p!==undefined) p.catch(e=>console.log("Audio unlock error:", e));
+  }
+  ['click','touchstart','keydown'].forEach(e=>document.removeEventListener(e, unlockAudio));
+};
+['click','touchstart','keydown'].forEach(e=>document.addEventListener(e, unlockAudio));
+
+function playSiren(){
+  if(alarmActive)return;
+  initAudio();
+  if(audioCtx.state==='suspended'){
+     let p = audioCtx.resume();
+     if(p!==undefined) p.catch(e=>console.log("Autoplay blocked:", e));
+  }
+  alarmActive=true;
+  document.getElementById('gasModal').classList.add('active');
+  
+  sirenOsc=audioCtx.createOscillator();
+  sirenOsc.type='square';
+  sirenOsc.connect(sirenGain);
+  sirenOsc.start();
+  
+  let high=true;
+  sirenOsc.frequency.value=700;
+  sirenInterval=setInterval(()=>{
+    high=!high;
+    sirenOsc.frequency.value=high?700:450;
+  }, 400);
+}
+function stopSiren(){
+  if(!alarmActive)return;
+  alarmActive=false;
+  document.getElementById('gasModal').classList.remove('active');
+  if(sirenInterval){clearInterval(sirenInterval);sirenInterval=null;}
+  if(sirenOsc){
+    try{sirenOsc.stop();}catch(e){}
+    sirenOsc.disconnect();sirenOsc=null;
+  }
+}
+function acknowledgeGas(){
+  stopSiren();
+  snoozeTimer=Date.now()+15000; // 15 saniye susturma
+}
+
+function setConnected(state){
+  const w=document.getElementById('wifiBadge'),e=document.getElementById('espBadge');
+  if(state){w.classList.add('connected');e.classList.add('connected');}
+  else{w.classList.remove('connected');e.classList.remove('connected');}
+}
 function startSensorPolling(){if(sensorPolling)return;sensorPolling=setInterval(pollSensors,1500);}
 function pollSensors(){
   fetch('/sensors').then(r=>r.json()).then(d=>{
-    if(d.gas!==undefined){document.getElementById('gasVal').textContent=d.gas;drawGasGauge(d.gas);}
+    setConnected(true);
+    clearTimeout(connTimeout);
+    connTimeout=setTimeout(()=>setConnected(false), 3000);
+    
+    if(d.gas!==undefined){
+      document.getElementById('gasVal').textContent=d.gas;
+      drawGasGauge(d.gas);
+      // Alarm Mantigi
+      if(d.gas > GAS_THRESHOLD && Date.now() > snoozeTimer){
+         playSiren();
+      } else if (d.gas <= GAS_THRESHOLD && alarmActive) {
+         stopSiren(); // Otomatik duzelirse kapat
+      }
+    }
+    
     const gi=document.getElementById('gasItem'),ab=document.getElementById('dashAlert');
-    if(d.gasAlert){gi.classList.add('alert');ab.innerHTML='&#9888; GAZ YUKSEK!';ab.classList.add('show');}
-    else{gi.classList.remove('alert');ab.classList.remove('show');}
-  }).catch(()=>{});
+    if(d.gasAlert || (d.gas!==undefined && d.gas>GAS_THRESHOLD)){
+      gi.classList.add('alert');ab.innerHTML='&#9888; GAZ YUKSEK!';ab.classList.add('show');
+    }else{
+      gi.classList.remove('alert');ab.classList.remove('show');
+    }
+  }).catch(()=>{setConnected(false);});
 }
 initLayout();
 startSensorPolling();drawGasGauge(0);
+
+// === MATRIX RAIN ===
+const mCanvas=document.getElementById('matrixCanvas');
+const mCtx=mCanvas.getContext('2d');
+let mWidth, mHeight, cols, yPos;
+function initMatrix(){
+  mWidth=mCanvas.width=window.innerWidth;
+  mHeight=mCanvas.height=window.innerHeight;
+  cols=Math.floor(mWidth/20)+1;
+  yPos=Array(cols).fill(0);
+}
+initMatrix();
+window.addEventListener('resize',initMatrix);
+function drawMatrix(){
+  mCtx.fillStyle='rgba(5,5,5,0.08)';
+  mCtx.fillRect(0,0,mWidth,mHeight);
+  mCtx.fillStyle='rgba(0,255,65,0.4)';
+  mCtx.font='11pt Consolas';
+  for(let i=0;i<cols;i++){
+    if(Math.random() > 0.95) continue;
+    const text=String.fromCharCode(0x30A0 + Math.random()*96);
+    mCtx.fillText(text,i*20,yPos[i]);
+    if(yPos[i]>100+Math.random()*15000)yPos[i]=0;
+    else yPos[i]+=20;
+  }
+}
+setInterval(drawMatrix,80);
+
 </script></body></html>
 )rawliteral";
 #endif
