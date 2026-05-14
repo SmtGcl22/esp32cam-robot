@@ -1,11 +1,13 @@
 /*
  * ═══════════════════════════════════════════════════════════════
  *  KESİS-ROBOT — Ana ESP32 Alıcı (ESP-NOW + Mecanum Kontrol)
+ *               + DHT11 Sıcaklık/Nem + MQ Gaz Sensörü
  * ═══════════════════════════════════════════════════════════════
  *  Board     : ESP32 DevKit v1
  *  Sürücü    : 2x TB6612FNG
  *  Tekerlekler: 4x Mecanum
- *  Protokol  : ESP-NOW alıcı (ESP32-CAM'den komut alır)
+ *  Protokol  : ESP-NOW çift yönlü (ESP32-CAM ile)
+ *  Sensörler : DHT11 (GPIO5), MQ Gaz (GPIO34)
  * ═══════════════════════════════════════════════════════════════
  *  Mecanum Kinematik:
  *    FL = Y + X + Rot    (Sol Ön)
@@ -46,6 +48,14 @@
 
 #define BUZZER_PIN 32   // Korna (Buzzer) Pini
 
+// ═══════════════════════════════════════
+//  Sensör Pin Tanımları
+// ═══════════════════════════════════════
+#define MQ_PIN     34       // MQ Gaz sensörü Analog çıkışı (ADC1)
+
+// ═══════════════════════════════════════
+//  Sabitler
+// ═══════════════════════════════════════
 // PWM Ayarları
 #define MOTOR_FREQ  1000
 #define MOTOR_RES   8     // 8-bit → 0-255
@@ -56,8 +66,11 @@
 // Güvenlik timeout (ms) — bu süre içinde veri gelmezse dur
 #define TIMEOUT_MS  500
 
+// Sensör okuma aralığı (ms)
+#define SENSOR_INTERVAL 1000
+
 // ═══════════════════════════════════════
-//  ESP-NOW Kontrol Verisi Yapısı
+//  ESP-NOW Kontrol Verisi Yapısı (CAM → Alıcı)
 // ═══════════════════════════════════════
 typedef struct __attribute__((packed)) {
   int8_t  x;      // -100..100 strafe (sola/sağa kayma)
@@ -67,9 +80,27 @@ typedef struct __attribute__((packed)) {
   uint8_t horn;   // 0=Kapalı, 1=Açık
 } ControlData;
 
+// ═══════════════════════════════════════
+//  Sensör Verisi Yapısı (Alıcı → CAM)
+// ═══════════════════════════════════════
+typedef struct __attribute__((packed)) {
+  int16_t gasValue;     // 0-4095 (ADC ham değer)
+} SensorData;
+
+// ═══════════════════════════════════════
+//  Global Değişkenler
+// ═══════════════════════════════════════
 ControlData ctrlData = {0, 0, 0, 200, 0};
+SensorData  sensorData = {0};
 unsigned long lastRecvTime = 0;
 bool dataReceived = false;
+
+// ESP32-CAM MAC adresi (ilk veri geldiğinde yakalanacak)
+uint8_t camMAC[6] = {0};
+bool camPeerAdded = false;
+
+// Sensör zamanlayıcı
+unsigned long lastSensorRead = 0;
 
 // ═══════════════════════════════════════
 //  Tek Motor Sürme
@@ -142,6 +173,47 @@ void onDataRecv(const esp_now_recv_info_t *info, const uint8_t *data, int len) {
     memcpy(&ctrlData, data, sizeof(ControlData));
     lastRecvTime = millis();
     dataReceived = true;
+
+    // İlk veri geldiğinde ESP32-CAM'in MAC adresini yakala ve peer olarak ekle
+    if (!camPeerAdded && info->src_addr) {
+      memcpy(camMAC, info->src_addr, 6);
+      esp_now_peer_info_t peerInfo = {};
+      memcpy(peerInfo.peer_addr, camMAC, 6);
+      peerInfo.channel = 0;
+      peerInfo.encrypt = false;
+      peerInfo.ifidx = WIFI_IF_STA;
+      if (esp_now_add_peer(&peerInfo) == ESP_OK) {
+        camPeerAdded = true;
+        Serial.printf("[OK] ESP32-CAM peer eklendi: %02X:%02X:%02X:%02X:%02X:%02X\n",
+          camMAC[0], camMAC[1], camMAC[2], camMAC[3], camMAC[4], camMAC[5]);
+      }
+    }
+  }
+}
+
+// ═══════════════════════════════════════
+//  ESP-NOW Gönderim Callback
+// ═══════════════════════════════════════
+void onSensorSent(const wifi_tx_info_t *info, esp_now_send_status_t status) {
+  // Sensör verisi gönderim durumu (opsiyonel debug)
+}
+
+// ═══════════════════════════════════════
+//  Sensör Okuma ve Gönderim
+// ═══════════════════════════════════════
+void readAndSendSensors() {
+  // MQ Gaz sensörü oku (ADC1 — WiFi ile çakışmaz)
+  int g = analogRead(MQ_PIN);
+  sensorData.gasValue = (int16_t)g;
+
+  Serial.printf("[SENSOR] Gaz:%d\n", sensorData.gasValue);
+
+  // ESP32-CAM'e gönder (peer eklenmişse)
+  if (camPeerAdded) {
+    esp_err_t result = esp_now_send(camMAC, (uint8_t *)&sensorData, sizeof(sensorData));
+    if (result != ESP_OK) {
+      Serial.println("[HATA] Sensör verisi gönderilemedi!");
+    }
   }
 }
 
@@ -153,7 +225,7 @@ void setup() {
   Serial.println();
   Serial.println("═══════════════════════════════════════");
   Serial.println("   KESİS-ROBOT — ESP-NOW Alıcı");
-  Serial.println("   Mecanum 4WD Motor Kontrol");
+  Serial.println("   Mecanum 4WD + Sensörler");
   Serial.println("═══════════════════════════════════════");
 
   // ── Standby pin ──
@@ -179,6 +251,10 @@ void setup() {
   stopAllMotors();
   Serial.println("[OK] Motor pinleri hazır (TB6612 x2)");
 
+  // ── Sensörler başlat ──
+  pinMode(MQ_PIN, INPUT);
+  Serial.println("[OK] MQ Gaz (GPIO34) hazır");
+
   // ── WiFi STA modu (sadece ESP-NOW için) ──
   WiFi.mode(WIFI_STA);
   delay(500); // WiFi modülünün tam başlamasını bekle
@@ -197,13 +273,15 @@ void setup() {
   }
 
   esp_now_register_recv_cb(onDataRecv);
-  Serial.println("[OK] ESP-NOW alıcı hazır — Komut bekleniyor...");
+  esp_now_register_send_cb(onSensorSent);
+  Serial.println("[OK] ESP-NOW çift yönlü hazır — Komut bekleniyor...");
 
   Serial.println("═══════════════════════════════════════");
   Serial.println("   HAZIR — ESP32-CAM'den veri bekleniyor");
   Serial.println("═══════════════════════════════════════");
 
   lastRecvTime = millis();
+  lastSensorRead = millis();
 }
 
 // ═══════════════════════════════════════
@@ -227,6 +305,12 @@ void loop() {
       Serial.println("[UYARI] ESP-NOW sinyal yok — motorlar durduruldu");
       lastWarn = millis();
     }
+  }
+
+  // ── Sensör okuma (her SENSOR_INTERVAL ms'de bir) ──
+  if (millis() - lastSensorRead >= SENSOR_INTERVAL) {
+    lastSensorRead = millis();
+    readAndSendSensors();
   }
 
   delay(5); // CPU rahatlat

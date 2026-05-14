@@ -1,13 +1,14 @@
 /*
  * ═══════════════════════════════════════════════════════════════
- *  KESİS-ROBOT — ESP32-CAM Kamera + Web Sunucu + ESP-NOW Gönderici
- *               + Otonom Renk Takip Modu
+ *  KESİS-ROBOT — ESP32-CAM Kamera + Web Sunucu + ESP-NOW Çift Yönlü
+ *               + Otonom Renk Takip + HC-SR04 Mesafe + Telemetri
  * ═══════════════════════════════════════════════════════════════
  *  Board     : ESP32-CAM (AI-Thinker)
  *  Kamera    : OV2640
  *  WiFi      : AP modu — SSID: KesisRobot-CAM / Şifre: kesis2026
- *  Protokol  : ESP-NOW → Ana ESP32 (E0:8C:FE:30:D8:54)
- *  Arayüz    : MJPEG stream + Sanal Joystick + Otonom Top Takip
+ *  Protokol  : ESP-NOW çift yönlü ↔ Ana ESP32 (E0:8C:FE:30:D8:54)
+ *  Sensörler : HC-SR04 Mesafe (GPIO13/GPIO2)
+ *  Arayüz    : MJPEG stream + Joystick + Otonom + Telemetri Paneli
  * ═══════════════════════════════════════════════════════════════
  */
 
@@ -58,12 +59,18 @@
 #define PAN_MAX    180
 #define PAN_CENTER 90
 #define TILT_MIN   0
-#define TILT_MAX   180
+#define TILT_MAX   130
 #define TILT_CENTER 90
 
 // Servo mevcut açıları
 volatile int panAngle  = PAN_CENTER;
 volatile int tiltAngle = TILT_CENTER;
+
+// ═══════════════════════════════════════
+//  HC-SR04 Mesafe Sensörü Pin Tanımları
+// ═══════════════════════════════════════
+#define TRIG_PIN   13   // Ultrasonik Trig çıkışı
+#define ECHO_PIN    2   // Ultrasonik Echo girişi
 
 // ═══════════════════════════════════════
 //  WiFi AP Ayarları
@@ -87,6 +94,21 @@ typedef struct __attribute__((packed)) {
 } ControlData;
 
 ControlData ctrlData = {0, 0, 0, 200, 0};
+
+// ═══════════════════════════════════════
+//  Sensör Verisi Yapısı (Alıcı → CAM)
+// ═══════════════════════════════════════
+typedef struct __attribute__((packed)) {
+  int16_t gasValue;     // 0-4095 (ADC ham değer)
+} SensorData;
+
+// Alıcıdan gelen sensör verileri
+volatile int recvGas  = 0;
+
+// HC-SR04 mesafe ölçümü
+volatile float distanceCm = -1;
+unsigned long lastDistRead = 0;
+#define DIST_INTERVAL 200  // 200ms'de bir ölç
 
 // HTTP sunucu handle'ları
 httpd_handle_t stream_httpd = NULL;
@@ -294,8 +316,19 @@ void detectTask(void *param) {
 //  ESP-NOW Gönderim Callback
 // ═══════════════════════════════════════
 void onDataSent(const wifi_tx_info_t *info, esp_now_send_status_t status) {
-  Serial.printf("[ESP-NOW TX] %s\n",
-                status == ESP_NOW_SEND_SUCCESS ? "BASARILI" : "BASARISIZ");
+  // Gönderim durumu (debug gerekirse açılabilir)
+}
+
+// ═══════════════════════════════════════
+//  ESP-NOW Sensör Verisi Alım Callback
+// ═══════════════════════════════════════
+void onSensorRecv(const esp_now_recv_info_t *info, const uint8_t *data, int len) {
+  if (len == sizeof(SensorData)) {
+    SensorData sd;
+    memcpy(&sd, data, sizeof(SensorData));
+    recvGas  = sd.gasValue;
+    Serial.printf("[SENSOR RX] Gaz:%d\n", recvGas);
+  }
 }
 
 // ═══════════════════════════════════════
@@ -303,6 +336,21 @@ void onDataSent(const wifi_tx_info_t *info, esp_now_send_status_t status) {
 // ═══════════════════════════════════════
 void sendESPNow() {
   esp_now_send(receiverMAC, (uint8_t *)&ctrlData, sizeof(ctrlData));
+}
+
+// ═══════════════════════════════════════
+//  HC-SR04 Mesafe Ölçümü
+// ═══════════════════════════════════════
+float readDistance() {
+  digitalWrite(TRIG_PIN, LOW);
+  delayMicroseconds(2);
+  digitalWrite(TRIG_PIN, HIGH);
+  delayMicroseconds(10);
+  digitalWrite(TRIG_PIN, LOW);
+
+  long duration = pulseIn(ECHO_PIN, HIGH, 25000); // 25ms timeout (~4.25m max)
+  if (duration == 0) return -1;  // zaman aşımı — engel yok
+  return duration * 0.034 / 2.0; // cm cinsinden mesafe
 }
 
 // ═══════════════════════════════════════
@@ -562,6 +610,22 @@ static esp_err_t servo_handler(httpd_req_t *req) {
 }
 
 // ═══════════════════════════════════════
+//  Sensör Handler — /sensors (JSON)
+// ═══════════════════════════════════════
+static esp_err_t sensors_handler(httpd_req_t *req) {
+  char json[200];
+  snprintf(json, sizeof(json),
+    "{\"dist\":%.1f,\"gas\":%d,\"distAlert\":%s,\"gasAlert\":%s}",
+    distanceCm, recvGas,
+    (distanceCm > 0 && distanceCm < 15) ? "true" : "false",
+    (recvGas > 2000) ? "true" : "false");
+
+  httpd_resp_set_type(req, "application/json");
+  httpd_resp_set_hdr(req, "Access-Control-Allow-Origin", "*");
+  return httpd_resp_send(req, json, strlen(json));
+}
+
+// ═══════════════════════════════════════
 //  HTTP Sunucu Başlatma
 // ═══════════════════════════════════════
 void startWebServer() {
@@ -609,12 +673,17 @@ void startWebServer() {
                               .method = HTTP_GET,
                               .handler = servo_handler,
                               .user_ctx = NULL};
+    httpd_uri_t sensors_uri = {.uri = "/sensors",
+                               .method = HTTP_GET,
+                               .handler = sensors_handler,
+                               .user_ctx = NULL};
     httpd_register_uri_handler(ctrl_httpd, &index_uri);
     httpd_register_uri_handler(ctrl_httpd, &control_uri);
     httpd_register_uri_handler(ctrl_httpd, &flash_uri);
     httpd_register_uri_handler(ctrl_httpd, &automode_uri);
     httpd_register_uri_handler(ctrl_httpd, &target_uri);
     httpd_register_uri_handler(ctrl_httpd, &servo_uri);
+    httpd_register_uri_handler(ctrl_httpd, &sensors_uri);
     Serial.println("[OK] Kontrol sunucu başlatıldı (port 80)");
   }
 }
@@ -629,6 +698,7 @@ void initESPNow() {
   }
 
   esp_now_register_send_cb(onDataSent);
+  esp_now_register_recv_cb(onSensorRecv);
 
   // Alıcı peer ekle
   esp_now_peer_info_t peerInfo = {};
@@ -661,12 +731,11 @@ void setup() {
   pinMode(FLASH_PIN, OUTPUT);
   digitalWrite(FLASH_PIN, LOW);
 
-  // Servo PWM başlat
-  ledcAttach(SERVO_PAN_PIN, SERVO_FREQ, SERVO_RES);
-  ledcAttach(SERVO_TILT_PIN, SERVO_FREQ, SERVO_RES);
-  setServo(SERVO_PAN_PIN, PAN_CENTER);
-  setServo(SERVO_TILT_PIN, TILT_CENTER);
-  Serial.println("[OK] Pan-Tilt servolar başlatıldı (GPIO14, GPIO13)");
+  // HC-SR04 pinleri
+  pinMode(TRIG_PIN, OUTPUT);
+  pinMode(ECHO_PIN, INPUT);
+  digitalWrite(TRIG_PIN, LOW);
+  Serial.println("[OK] HC-SR04 mesafe sensörü hazır (Trig:13, Echo:2)");
 
   // Kamera başlat
   if (!initCamera()) {
@@ -675,10 +744,20 @@ void setup() {
     ESP.restart();
   }
 
+  // Servo PWM başlat (Kameradan sonra başlatıyoruz ki LEDC kanalları çakışmasın)
+  ledcAttach(SERVO_PAN_PIN, SERVO_FREQ, SERVO_RES);
+  ledcAttach(SERVO_TILT_PIN, SERVO_FREQ, SERVO_RES);
+  setServo(SERVO_PAN_PIN, PAN_CENTER);
+  setServo(SERVO_TILT_PIN, TILT_CENTER);
+  Serial.println("[OK] Pan-Tilt servolar başlatıldı (GPIO14, GPIO12)");
+
   // WiFi AP modu
   WiFi.mode(WIFI_AP);
   WiFi.softAP(AP_SSID, AP_PASS, AP_CHANNEL);
   delay(300); // AP stabilizasyonu
+  
+  // WiFi güç tasarrufunu kapat (bağlantı kopmalarını önler)
+  esp_wifi_set_ps(WIFI_PS_NONE);
 
   IPAddress IP = WiFi.softAPIP();
   Serial.println("[OK] WiFi AP başlatıldı");
@@ -715,4 +794,14 @@ void setup() {
 // ═══════════════════════════════════════
 //  LOOP
 // ═══════════════════════════════════════
-void loop() { delay(10); }
+void loop() {
+  // HC-SR04 mesafe ölçümü (periyodik)
+  if (millis() - lastDistRead >= DIST_INTERVAL) {
+    lastDistRead = millis();
+    float d = readDistance();
+    if (d > 0) {
+      distanceCm = d;
+    }
+  }
+  delay(10);
+}
